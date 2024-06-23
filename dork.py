@@ -8,32 +8,47 @@ def dork_google(dork_query, num_results):
     url = f"https://www.google.com/search?q={dork_query}&num={num_results}"
     try:
         response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            results = soup.find_all('div', class_='tF2Cxc')
-            if not results:
-                print("Sorry, the dork returned no results.")
-            else:
-                for result in results:
-                    title = result.find('h3').get_text()
-                    link = result.find('a')['href']
-                    print(f"Title: {title}")
-                    print(f"Link: {link}\n")
-            return soup
+        response.raise_for_status()  # Raise an HTTPError for bad responses
+        soup = BeautifulSoup(response.text, 'html.parser')
+        results = soup.find_all('div', class_='tF2Cxc')
+        
+        if not results:
+            print("Sorry, the dork returned no results.")
         else:
-            print(f"Failed to fetch results. Status code: {response.status_code}")
-            return None
+            for result in results:
+                title_tag = result.find('h3')  # Find the <h3> tag containing the title
+                if title_tag:
+                    title = title_tag.get_text(strip=True)  # Get the text of the title, stripping any whitespace
+                else:
+                    title = "Title not found"
+
+                link_tag = result.find('a')  # Find the <a> tag containing the link
+                if link_tag and 'href' in link_tag.attrs:
+                    link = link_tag['href']  # Get the 'href' attribute of the <a> tag
+                else:
+                    link = "Link not found"
+
+                print(f"Title: {title}")
+                print(f"Link: {link}\n")
+
+        return results
+
     except requests.exceptions.RequestException as e:
         print(f"An error occurred: {e}")
         return None
 
 def save_results_to_file(results, filename):
-    with open(filename, 'w', encoding='utf-8') as file:
-        for result in results:
-            title = result.find('h3').get_text()
-            link = result.find('a')['href']
-            file.write(f"{link}\n")
-    print(f"Results saved to {filename}")
+    try:
+        with open(filename, 'w', encoding='utf-8') as file:
+            for result in results:
+                link_tag = result.find('a')
+                if link_tag and 'href' in link_tag.attrs:
+                    link = link_tag['href']
+                    file.write(f"{link}\n")
+                else:
+                    print("Link not found, skipping...")
+    except Exception as e:
+        print(f"Error saving results to file: {e}")
 
 def main():
     print("""
@@ -43,7 +58,7 @@ def main():
 | | | ) /'_`\ ( '__)| , <(______)/'/'  (`\/')| ,__/'| |  _ | | | || |  | |  
 | |_) |( (_) )| |   | |\`\     /'/'___  >  < | |    | |_( )| (_) || |  | |  
 (____/'`\___/'(_)   (_) (_)   (_______)(_/\_)(_)    (____/'(_____)(_)  (_)  
-by ZxPLOIT and ChatGpt
+By ZxPLOIT and ChatGpt
     """)
     dork_query = input("Dork: ")
     num_results = input("Berapa? : ")
